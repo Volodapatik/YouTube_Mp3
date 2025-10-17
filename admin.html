@@ -10,6 +10,11 @@
         button { background: #007cba; color: white; border: none; cursor: pointer; }
         #status { margin: 10px 0; padding: 10px; border-radius: 5px; }
     </style>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js"></script>
+    <script src="firebase-config.js"></script>
 </head>
 <body>
     <div class="container">
@@ -18,14 +23,33 @@
         <input type="text" id="videoId" placeholder="Введите YouTube Video ID">
         <button onclick="updateVideo()">🔄 Обновить видео</button>
         
-        <div id="status">Готов к обновлению</div>
+        <div id="status">Загрузка...</div>
         
         <p><strong>Текущее видео:</strong> <span id="currentVideo">_g8JtMksKN8</span></p>
-        <p><strong>Текущая версия:</strong> <span id="currentVersion">1</span></p>
         <p><a href="index.html" target="_blank">Открыть плеер</a></p>
     </div>
 
     <script>
+        // Загружаем текущий Video ID
+        db.collection('config').doc('video').get()
+            .then((doc) => {
+                if (doc.exists) {
+                    const currentId = doc.data().videoId;
+                    document.getElementById('currentVideo').textContent = currentId;
+                    document.getElementById('videoId').value = currentId;
+                    document.getElementById('status').textContent = 'Готов к обновлению';
+                } else {
+                    // Создаем документ если его нет
+                    db.collection('config').doc('video').set({
+                        videoId: '_g8JtMksKN8',
+                        lastUpdated: new Date()
+                    });
+                }
+            })
+            .catch((error) => {
+                document.getElementById('status').textContent = 'Ошибка загрузки: ' + error.message;
+            });
+
         function updateVideo() {
             const videoId = document.getElementById('videoId').value.trim();
             const status = document.getElementById('status');
@@ -35,30 +59,21 @@
                 return;
             }
             
-            // Увеличиваем версию конфига
-            var currentVersion = parseInt(localStorage.getItem('configVersion') || '1');
-            var newVersion = currentVersion + 1;
+            status.innerHTML = '🔄 Сохраняем в Firebase...';
             
-            // Сохраняем новые данные
-            localStorage.setItem('currentVideoId', videoId);
-            localStorage.setItem('configVersion', newVersion);
-            
-            // Обновляем отображение
-            document.getElementById('currentVideo').textContent = videoId;
-            document.getElementById('currentVersion').textContent = newVersion;
-            
-            status.innerHTML = '✅ Видео обновлено! Версия: ' + newVersion + '<br>Плеер обновится автоматически в течение 30 секунд.';
+            // Сохраняем в Firebase
+            db.collection('config').doc('video').set({
+                videoId: videoId,
+                lastUpdated: new Date()
+            })
+            .then(() => {
+                status.innerHTML = '✅ Видео обновлено! Все плееры перезагрузятся через 5 секунд.';
+                document.getElementById('currentVideo').textContent = videoId;
+            })
+            .catch((error) => {
+                status.innerHTML = '❌ Ошибка сохранения: ' + error.message;
+            });
         }
-        
-        // Загружаем текущие данные при загрузке
-        window.onload = function() {
-            const currentId = localStorage.getItem('currentVideoId') || '_g8JtMksKN8';
-            const currentVersion = localStorage.getItem('configVersion') || '1';
-            
-            document.getElementById('currentVideo').textContent = currentId;
-            document.getElementById('currentVersion').textContent = currentVersion;
-            document.getElementById('videoId').value = currentId;
-        };
     </script>
 </body>
 </html>
