@@ -1,3 +1,4 @@
+// Firebase config
 const firebaseConfig = {
     apiKey: "AIzaSyBmPour4ShHdlil6gQ5EKtGKaG8AEfQq94",
     authDomain: "music-player-14a7a.firebaseapp.com",
@@ -7,11 +8,14 @@ const firebaseConfig = {
     appId: "1:710185552245:web:42113e37e9339957022b3c"
 };
 
+// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
+
+// Initialize services
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-// Анонимная аутентификация
+// Anonymous auth
 auth.signInAnonymously()
-    .then(() => console.log('✅ Firebase authenticated'))
-    .catch(error => console.log('❌ Auth error:', error));
+    .then(() => console.log('✅ Firebase connected'))
+    .catch(error => console.log('❌ Firebase error:', error));
