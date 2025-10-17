@@ -32,7 +32,6 @@
             <button class="btn" onclick="disableSound()">🔇 Выключить звук</button>
             <button class="btn" onclick="pauseVideo()">⏸️ Пауза</button>
             <button class="btn" onclick="playVideo()">▶️ Продолжить</button>
-            <button class="btn" onclick="changeVideo()">🔄 Сменить видео</button>
         </div>
     </div>
     
@@ -42,15 +41,50 @@
     
     <script>
         var player;
+        var currentVideoId = getVideoId();
+        var lastDeployHash = '';
         
-        // Функция получения Video ID (из LocalStorage или по умолчанию)
+        // Функция получения Video ID
         function getVideoId() {
-            return localStorage.getItem('currentVideoId') || '_g8JtMksKN8';
+            var savedId = localStorage.getItem('currentVideoId');
+            if (!savedId) {
+                savedId = '_g8JtMksKN8'; // По умолчанию
+                localStorage.setItem('currentVideoId', savedId);
+            }
+            return savedId;
         }
         
         $(document).ready(function() {
-            const videoId = getVideoId();
+            initPlayer(currentVideoId);
             
+            // Проверяем деплой GitHub каждые 10 секунд
+            setInterval(checkGitHubDeploy, 10000);
+        });
+        
+        // Проверяем обновился ли сайт на GitHub
+        function checkGitHubDeploy() {
+            // Создаем запрос к главной странице с временной меткой
+            fetch(window.location.href + '?deploy_check=' + Date.now())
+                .then(response => response.text())
+                .then(html => {
+                    // Ищем в HTML актуальный Video ID
+                    var match = html.match(/videoId['"]?\s*:\s*['"]([^'"]+)['"]/);
+                    if (match && match[1]) {
+                        var newVideoId = match[1];
+                        if (newVideoId !== currentVideoId) {
+                            currentVideoId = newVideoId;
+                            localStorage.setItem('currentVideoId', newVideoId);
+                            restartPlayer(newVideoId);
+                            $('#debug').html('🎉 Новое видео загружено: ' + newVideoId);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.log('Deploy check failed:', error);
+                });
+        }
+        
+        function initPlayer(videoId) {
             // Запускаем видео на весь экран
             $('#video-background').YTPlayer({
                 videoId: videoId,
@@ -77,7 +111,17 @@
                     startAppSync();
                 }
             });
-        });
+        }
+        
+        function restartPlayer(newVideoId) {
+            if (player) {
+                // Уничтожаем старый плеер
+                $('#video-background').YTPlayer('destroy');
+            }
+            
+            // Создаем новый плеер
+            initPlayer(newVideoId);
+        }
         
         // Функции управления
         function enableSound() {
@@ -107,10 +151,6 @@
                 player.playVideo();
                 $('#debug').html('▶️ Видео продолжено');
             }
-        }
-        
-        function changeVideo() {
-            window.open('admin.html', '_blank');
         }
         
         // Синхронизация с приложением
