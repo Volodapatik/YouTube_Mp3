@@ -165,7 +165,7 @@
                 videoId: '_g8JtMksKN8',
                 mute: true,
                 repeat: true,
-                fitToBackground: true, // Важно для фона!
+                fitToBackground: true,
                 playerVars: {
                     modestbranding: 1,
                     autoplay: 1,
@@ -177,66 +177,18 @@
                     player = $('#video-background').data('ytPlayer').player;
                     $('#debug').html('✅ Видео работает на весь экран! | Звук: выключен');
                     
-                    // Запускаем синхронизацию с приложением
-                    setTimeout(setupAppSync, 1000);
-                    
                     // Автоповорот для мобильных
                     setTimeout(function() {
                         window.scrollTo(0, 0);
                     }, 1000);
+                    
+                    // Запускаем синхронизацию с приложением
+                    startAppSync();
                 }
             });
         });
         
-        // === СИНХРОНИЗАЦИЯ С ANDROID ПРИЛОЖЕНИЕМ ===
-        function setupAppSync() {
-            if (typeof player === 'undefined') return;
-            
-            // Отправляем обновления каждую секунду
-            setInterval(function() {
-                try {
-                    var currentTime = Math.floor(player.getCurrentTime());
-                    var isPlaying = player.getPlayerState() === 1;
-                    var duration = Math.floor(player.getDuration());
-                    
-                    // Отправляем данные в Android приложение
-                    if (window.Android && typeof Android.updateTime === 'function') {
-                        Android.updateTime(currentTime, isPlaying, duration);
-                    }
-                } catch (e) {
-                    console.log('Sync error:', e);
-                }
-            }, 1000);
-            
-            // Отслеживаем события плеера
-            player.addEventListener('onStateChange', function(event) {
-                try {
-                    var isPlaying = event.data === 1;
-                    var currentTime = Math.floor(player.getCurrentTime());
-                    
-                    if (window.Android && typeof Android.updateTime === 'function') {
-                        Android.updateTime(currentTime, isPlaying);
-                    }
-                } catch (e) {
-                    console.log('State change error:', e);
-                }
-            });
-        }
-        
-        // Функция для перемотки из приложения
-        function seekTo(time) {
-            if (player && typeof player.seekTo === 'function') {
-                player.seekTo(time);
-                $('#debug').html('⏩ Перемотка на: ' + Math.floor(time/60) + ':' + (time%60 < 10 ? '0' : '') + time%60);
-                return true;
-            }
-            return false;
-        }
-        
-        // Делаем функцию глобальной для доступа из Android
-        window.seekTo = seekTo;
-        
-        // Функции управления
+        // === ТВОИ РАБОЧИЕ ФУНКЦИИ ===
         function enableSound() {
             if (player) {
                 player.unMute();
@@ -265,6 +217,38 @@
                 $('#debug').html('▶️ Видео продолжено | Звук: ' + (player.isMuted() ? 'выключен' : 'включен'));
             }
         }
+        
+        // === СИНХРОНИЗАЦИЯ С ПРИЛОЖЕНИЕМ (ОТДЕЛЬНО) ===
+        function startAppSync() {
+            if (typeof player === 'undefined') return;
+            
+            // Отправляем обновления каждую секунду
+            setInterval(function() {
+                try {
+                    var currentTime = Math.floor(player.getCurrentTime());
+                    var isPlaying = player.getPlayerState() === 1;
+                    
+                    // Отправляем данные в Android приложение
+                    if (window.Android && typeof Android.updateTime === 'function') {
+                        Android.updateTime(currentTime, isPlaying);
+                    }
+                } catch (e) {
+                    // Тихий режим - не ломаем сайт
+                }
+            }, 1000);
+        }
+        
+        // Функция для перемотки из приложения
+        function seekTo(time) {
+            if (player && typeof player.seekTo === 'function') {
+                player.seekTo(time);
+                return true;
+            }
+            return false;
+        }
+        
+        // Делаем функцию глобальной для доступа из Android
+        window.seekTo = seekTo;
         
         // Адаптация при повороте экрана
         $(window).on('resize orientationchange', function() {
