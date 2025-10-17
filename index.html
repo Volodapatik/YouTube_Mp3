@@ -32,6 +32,7 @@
             <button class="btn" onclick="disableSound()">🔇 Выключить звук</button>
             <button class="btn" onclick="pauseVideo()">⏸️ Пауза</button>
             <button class="btn" onclick="playVideo()">▶️ Продолжить</button>
+            <button class="btn" onclick="forceRefresh()">🔄 Обновить</button>
         </div>
     </div>
     
@@ -42,7 +43,7 @@
     <script>
         var player;
         var currentVideoId = getVideoId();
-        var lastDeployHash = '';
+        var currentConfigVersion = getConfigVersion();
         
         // Функция получения Video ID
         function getVideoId() {
@@ -54,34 +55,34 @@
             return savedId;
         }
         
+        // Функция получения версии конфига
+        function getConfigVersion() {
+            return parseInt(localStorage.getItem('configVersion') || '1');
+        }
+        
         $(document).ready(function() {
             initPlayer(currentVideoId);
+            $('#debug').html('✅ Видео: ' + currentVideoId + ' | Версия: ' + currentConfigVersion);
             
-            // Проверяем деплой GitHub каждые 10 секунд
-            setInterval(checkGitHubDeploy, 10000);
+            // Проверяем обновления каждые 30 секунд
+            setInterval(checkForUpdates, 30000);
         });
         
-        // Проверяем обновился ли сайт на GitHub
-        function checkGitHubDeploy() {
-            // Создаем запрос к главной странице с временной меткой
-            fetch(window.location.href + '?deploy_check=' + Date.now())
-                .then(response => response.text())
-                .then(html => {
-                    // Ищем в HTML актуальный Video ID
-                    var match = html.match(/videoId['"]?\s*:\s*['"]([^'"]+)['"]/);
-                    if (match && match[1]) {
-                        var newVideoId = match[1];
-                        if (newVideoId !== currentVideoId) {
-                            currentVideoId = newVideoId;
-                            localStorage.setItem('currentVideoId', newVideoId);
-                            restartPlayer(newVideoId);
-                            $('#debug').html('🎉 Новое видео загружено: ' + newVideoId);
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.log('Deploy check failed:', error);
-                });
+        // Проверяем обновилась ли версия конфига
+        function checkForUpdates() {
+            var savedVersion = getConfigVersion();
+            if (savedVersion !== currentConfigVersion) {
+                currentConfigVersion = savedVersion;
+                var newVideoId = getVideoId();
+                $('#debug').html('🔄 Обновление до версии ' + currentConfigVersion + ' | Видео: ' + newVideoId);
+                restartPlayer(newVideoId);
+            }
+        }
+        
+        // Принудительное обновление
+        function forceRefresh() {
+            localStorage.setItem('lastRefresh', Date.now());
+            location.reload(true);
         }
         
         function initPlayer(videoId) {
@@ -100,7 +101,7 @@
                 },
                 callback: function() {
                     player = $('#video-background').data('ytPlayer').player;
-                    $('#debug').html('✅ Видео: ' + videoId + ' | Звук: выключен');
+                    $('#debug').html('✅ Видео: ' + videoId + ' | Звук: выключен | Версия: ' + currentConfigVersion);
                     
                     // Автоповорот для мобильных
                     setTimeout(function() {
@@ -115,11 +116,8 @@
         
         function restartPlayer(newVideoId) {
             if (player) {
-                // Уничтожаем старый плеер
                 $('#video-background').YTPlayer('destroy');
             }
-            
-            // Создаем новый плеер
             initPlayer(newVideoId);
         }
         
@@ -169,7 +167,6 @@
             }, 1000);
         }
         
-        // Функция для перемотки из приложения
         function seekTo(time) {
             if (player && typeof player.seekTo === 'function') {
                 player.seekTo(time);
@@ -180,7 +177,6 @@
         
         window.seekTo = seekTo;
         
-        // Адаптация при повороте экрана
         $(window).on('resize orientationchange', function() {
             setTimeout(function() {
                 if (player) {
