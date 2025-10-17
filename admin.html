@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Admin - Смена видео</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f0f0f0; }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        input, button { width: 100%; padding: 10px; margin: 10px 0; font-size: 16px; }
+        button { background: #007cba; color: white; border: none; cursor: pointer; }
+        #status { margin: 10px 0; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Смена YouTube видео</h1>
+        
+        <input type="text" id="videoId" placeholder="Введите YouTube Video ID">
+        <button onclick="updateVideo()">🔄 Обновить видео</button>
+        
+        <div id="status">Готов к обновлению</div>
+        
+        <p><strong>Текущее видео:</strong> <span id="currentVideo">_g8JtMksKN8</span></p>
+        <p><a href="index.html" target="_blank">Открыть плеер</a></p>
+    </div>
+
+    <script>
+        function updateVideo() {
+            const videoId = document.getElementById('videoId').value.trim();
+            const status = document.getElementById('status');
+            
+            if (!videoId) {
+                status.innerHTML = '❌ Введите Video ID';
+                return;
+            }
+            
+            status.innerHTML = '🔄 Обновляем...';
+            
+            // Сохраняем в LocalStorage для мгновенного обновления
+            localStorage.setItem('currentVideoId', videoId);
+            document.getElementById('currentVideo').textContent = videoId;
+            
+            status.innerHTML = '✅ Видео обновлено! Открой плеер.';
+            
+            // Авто-открытие плеера
+            setTimeout(() => {
+                window.open('index.html', '_blank');
+            }, 1000);
+        }
+        
+        // Загружаем текущий ID при загрузке
+        window.onload = function() {
+            const currentId = localStorage.getItem('currentVideoId') || '_g8JtMksKN8';
+            document.getElementById('currentVideo').textContent = currentId;
+        };
+    </script>
+</body>
+</html>
