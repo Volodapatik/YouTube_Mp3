@@ -11,9 +11,10 @@
         #status { margin: 10px 0; padding: 10px; border-radius: 5px; }
     </style>
     
-    <!-- Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js"></script>
+    <!-- Firebase 8.x -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="firebase-config.js"></script>
 </head>
 <body>
@@ -23,32 +24,39 @@
         <input type="text" id="videoId" placeholder="Введите YouTube Video ID">
         <button onclick="updateVideo()">🔄 Обновить видео</button>
         
-        <div id="status">Загрузка...</div>
+        <div id="status">Подключение к Firebase...</div>
         
         <p><strong>Текущее видео:</strong> <span id="currentVideo">_g8JtMksKN8</span></p>
         <p><a href="index.html" target="_blank">Открыть плеер</a></p>
     </div>
 
     <script>
-        // Загружаем текущий Video ID
-        db.collection('config').doc('video').get()
-            .then((doc) => {
-                if (doc.exists) {
-                    const currentId = doc.data().videoId;
-                    document.getElementById('currentVideo').textContent = currentId;
-                    document.getElementById('videoId').value = currentId;
-                    document.getElementById('status').textContent = 'Готов к обновлению';
-                } else {
-                    // Создаем документ если его нет
-                    db.collection('config').doc('video').set({
-                        videoId: '_g8JtMksKN8',
-                        lastUpdated: new Date()
-                    });
-                }
-            })
-            .catch((error) => {
-                document.getElementById('status').textContent = 'Ошибка загрузки: ' + error.message;
-            });
+        // Ждем инициализации Firebase
+        setTimeout(function() {
+            loadCurrentVideo();
+        }, 2000);
+
+        function loadCurrentVideo() {
+            db.collection("config").doc("video").get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        const currentId = doc.data().videoId;
+                        document.getElementById('currentVideo').textContent = currentId;
+                        document.getElementById('videoId').value = currentId;
+                        document.getElementById('status').textContent = 'Готов к обновлению';
+                    } else {
+                        // Создаем документ если его нет
+                        db.collection("config").doc("video").set({
+                            videoId: '_g8JtMksKN8',
+                            lastUpdated: new Date()
+                        });
+                        document.getElementById('status').textContent = 'Создан новый конфиг';
+                    }
+                })
+                .catch((error) => {
+                    document.getElementById('status').textContent = 'Ошибка: ' + error.message;
+                });
+        }
 
         function updateVideo() {
             const videoId = document.getElementById('videoId').value.trim();
@@ -61,8 +69,7 @@
             
             status.innerHTML = '🔄 Сохраняем в Firebase...';
             
-            // Сохраняем в Firebase
-            db.collection('config').doc('video').set({
+            db.collection("config").doc("video").set({
                 videoId: videoId,
                 lastUpdated: new Date()
             })
