@@ -5,137 +5,24 @@
     <title>YouTube Mobile</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: Arial, sans-serif;
-            background: #000;
-            color: white;
-            overflow-x: hidden;
-        }
-        
-        /* Фоновое видео на весь экран */
-        #video-background {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: -1;
-        }
-        
-        /* Контент поверх видео */
-        .content {
-            position: relative;
-            z-index: 2;
-            min-height: 100vh;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.6);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-        }
-        
-        .title {
-            font-size: 28px;
-            margin-bottom: 20px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        }
-        
-        .description {
-            font-size: 16px;
-            margin-bottom: 30px;
-            line-height: 1.5;
-            max-width: 90%;
-        }
-        
-        /* Кнопки для мобильных */
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 10px;
-            margin: 20px 0;
-        }
-        
-        .btn {
-            padding: 12px 20px;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 2px solid white;
-            border-radius: 25px;
-            font-size: 16px;
-            cursor: pointer;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-        }
-        
-        .btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: scale(1.05);
-        }
-        
-        /* Отладка для мобильных */
-        #debug {
-            position: fixed;
-            bottom: 10px;
-            left: 10px;
-            right: 10px;
-            background: rgba(0, 255, 0, 0.9);
-            color: black;
-            padding: 10px;
-            border-radius: 10px;
-            font-size: 12px;
-            z-index: 1000;
-        }
-        
-        /* Адаптивность */
-        @media (max-width: 480px) {
-            .title {
-                font-size: 24px;
-            }
-            
-            .description {
-                font-size: 14px;
-            }
-            
-            .btn {
-                padding: 10px 16px;
-                font-size: 14px;
-            }
-        }
-        
-        /* Портретная ориентация */
-        @media (orientation: portrait) {
-            .content {
-                padding: 15px;
-            }
-        }
-        
-        /* Ландшафтная ориентация */
-        @media (orientation: landscape) {
-            .content {
-                padding: 10px;
-            }
-            
-            .title {
-                font-size: 22px;
-                margin-bottom: 10px;
-            }
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #000; color: white; overflow-x: hidden; }
+        #video-background { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; }
+        .content { position: relative; z-index: 2; min-height: 100vh; padding: 20px; background: rgba(0, 0, 0, 0.6); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .title { font-size: 28px; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .description { font-size: 16px; margin-bottom: 30px; line-height: 1.5; max-width: 90%; }
+        .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 20px 0; }
+        .btn { padding: 12px 20px; background: rgba(255, 255, 255, 0.2); color: white; border: 2px solid white; border-radius: 25px; font-size: 16px; cursor: pointer; backdrop-filter: blur(10px); transition: all 0.3s ease; }
+        .btn:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.05); }
+        #debug { position: fixed; bottom: 10px; left: 10px; right: 10px; background: rgba(0, 255, 0, 0.9); color: black; padding: 10px; border-radius: 10px; font-size: 12px; z-index: 1000; }
+        @media (max-width: 480px) { .title { font-size: 24px; } .description { font-size: 14px; } .btn { padding: 10px 16px; font-size: 14px; } }
+        @media (orientation: portrait) { .content { padding: 15px; } }
+        @media (orientation: landscape) { .content { padding: 10px; } .title { font-size: 22px; margin-bottom: 10px; } }
     </style>
 </head>
 <body>
-    <!-- Видео фон -->
     <div id="video-background"></div>
     
-    <!-- Контент -->
     <div class="content">
         <h1 class="title">🎬 Мобильное видео</h1>
         <p class="description">Твое видео теперь адаптировано под мобильные устройства и работает на весь экран!</p>
@@ -145,24 +32,28 @@
             <button class="btn" onclick="disableSound()">🔇 Выключить звук</button>
             <button class="btn" onclick="pauseVideo()">⏸️ Пауза</button>
             <button class="btn" onclick="playVideo()">▶️ Продолжить</button>
+            <button class="btn" onclick="changeVideo()">🔄 Сменить видео</button>
         </div>
     </div>
     
-    <!-- Отладка -->
-    <div id="debug">
-        📱 Мобильная версия | Видео: _g8JtMksKN8 | Звук: выключен
-    </div>
+    <div id="debug">📱 Мобильная версия | Загрузка...</div>
 
-    <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     
     <script>
         var player;
         
+        // Функция получения Video ID (из LocalStorage или по умолчанию)
+        function getVideoId() {
+            return localStorage.getItem('currentVideoId') || '_g8JtMksKN8';
+        }
+        
         $(document).ready(function() {
+            const videoId = getVideoId();
+            
             // Запускаем видео на весь экран
             $('#video-background').YTPlayer({
-                videoId: 'zTB42-TD34k',
+                videoId: videoId,
                 mute: true,
                 repeat: true,
                 fitToBackground: true,
@@ -175,20 +66,20 @@
                 },
                 callback: function() {
                     player = $('#video-background').data('ytPlayer').player;
-                    $('#debug').html('✅ Видео работает на весь экран! | Звук: выключен');
+                    $('#debug').html('✅ Видео: ' + videoId + ' | Звук: выключен');
                     
                     // Автоповорот для мобильных
                     setTimeout(function() {
                         window.scrollTo(0, 0);
                     }, 1000);
                     
-                    // Запускаем синхронизацию с приложением
+                    // Синхронизация с приложением
                     startAppSync();
                 }
             });
         });
         
-        // === ТВОИ РАБОЧИЕ ФУНКЦИИ ===
+        // Функции управления
         function enableSound() {
             if (player) {
                 player.unMute();
@@ -200,41 +91,41 @@
         function disableSound() {
             if (player) {
                 player.mute();
-                $('#debug').html('🔇 Звук выключен | Нажми "Включить звук"');
+                $('#debug').html('🔇 Звук выключен');
             }
         }
         
         function pauseVideo() {
             if (player) {
                 player.pauseVideo();
-                $('#debug').html('⏸️ Видео на паузе | Нажми "Продолжить"');
+                $('#debug').html('⏸️ Видео на паузе');
             }
         }
         
         function playVideo() {
             if (player) {
                 player.playVideo();
-                $('#debug').html('▶️ Видео продолжено | Звук: ' + (player.isMuted() ? 'выключен' : 'включен'));
+                $('#debug').html('▶️ Видео продолжено');
             }
         }
         
-        // === СИНХРОНИЗАЦИЯ С ПРИЛОЖЕНИЕМ (ОТДЕЛЬНО) ===
+        function changeVideo() {
+            window.open('admin.html', '_blank');
+        }
+        
+        // Синхронизация с приложением
         function startAppSync() {
             if (typeof player === 'undefined') return;
             
-            // Отправляем обновления каждую секунду
             setInterval(function() {
                 try {
                     var currentTime = Math.floor(player.getCurrentTime());
                     var isPlaying = player.getPlayerState() === 1;
                     
-                    // Отправляем данные в Android приложение
                     if (window.Android && typeof Android.updateTime === 'function') {
                         Android.updateTime(currentTime, isPlaying);
                     }
-                } catch (e) {
-                    // Тихий режим - не ломаем сайт
-                }
+                } catch (e) {}
             }, 1000);
         }
         
@@ -247,7 +138,6 @@
             return false;
         }
         
-        // Делаем функцию глобальной для доступа из Android
         window.seekTo = seekTo;
         
         // Адаптация при повороте экрана
@@ -260,8 +150,6 @@
         });
     </script>
 
-    <!-- Плагин -->
     <script src="jquery.youtubebackground.js"></script>
 </body>
 </html>
-
