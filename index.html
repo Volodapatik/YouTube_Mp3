@@ -41,21 +41,19 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     
     <script>
-        var player;
+        var player = null;
         var currentVideoId = getVideoId();
         var currentConfigVersion = getConfigVersion();
         
-        // Функция получения Video ID
         function getVideoId() {
             var savedId = localStorage.getItem('currentVideoId');
             if (!savedId) {
-                savedId = '_g8JtMksKN8'; // По умолчанию
+                savedId = '_g8JtMksKN8';
                 localStorage.setItem('currentVideoId', savedId);
             }
             return savedId;
         }
         
-        // Функция получения версии конфига
         function getConfigVersion() {
             return parseInt(localStorage.getItem('configVersion') || '1');
         }
@@ -64,29 +62,37 @@
             initPlayer(currentVideoId);
             $('#debug').html('✅ Видео: ' + currentVideoId + ' | Версия: ' + currentConfigVersion);
             
-            // Проверяем обновления каждые 30 секунд
             setInterval(checkForUpdates, 30000);
         });
         
-        // Проверяем обновилась ли версия конфига
         function checkForUpdates() {
             var savedVersion = getConfigVersion();
             if (savedVersion !== currentConfigVersion) {
                 currentConfigVersion = savedVersion;
                 var newVideoId = getVideoId();
                 $('#debug').html('🔄 Обновление до версии ' + currentConfigVersion + ' | Видео: ' + newVideoId);
-                restartPlayer(newVideoId);
+                
+                // ПОЛНАЯ ПЕРЕЗАГРУЗКА СТРАНИЦЫ вместо restartPlayer
+                setTimeout(function() {
+                    location.reload(true);
+                }, 1000);
             }
         }
         
-        // Принудительное обновление
         function forceRefresh() {
             localStorage.setItem('lastRefresh', Date.now());
             location.reload(true);
         }
         
         function initPlayer(videoId) {
-            // Запускаем видео на весь экран
+            // Уничтожаем старый плеер если есть
+            if (player) {
+                try {
+                    $('#video-background').YTPlayer('destroy');
+                    player = null;
+                } catch(e) {}
+            }
+            
             $('#video-background').YTPlayer({
                 videoId: videoId,
                 mute: true,
@@ -103,25 +109,15 @@
                     player = $('#video-background').data('ytPlayer').player;
                     $('#debug').html('✅ Видео: ' + videoId + ' | Звук: выключен | Версия: ' + currentConfigVersion);
                     
-                    // Автоповорот для мобильных
                     setTimeout(function() {
                         window.scrollTo(0, 0);
                     }, 1000);
                     
-                    // Синхронизация с приложением
                     startAppSync();
                 }
             });
         }
         
-        function restartPlayer(newVideoId) {
-            if (player) {
-                $('#video-background').YTPlayer('destroy');
-            }
-            initPlayer(newVideoId);
-        }
-        
-        // Функции управления
         function enableSound() {
             if (player) {
                 player.unMute();
@@ -151,7 +147,6 @@
             }
         }
         
-        // Синхронизация с приложением
         function startAppSync() {
             if (typeof player === 'undefined') return;
             
