@@ -20,9 +20,10 @@
         @media (orientation: landscape) { .content { padding: 10px; } .title { font-size: 22px; margin-bottom: 10px; } }
     </style>
     
-    <!-- Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js"></script>
+    <!-- Firebase 8.x -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="firebase-config.js"></script>
 </head>
 <body>
@@ -41,7 +42,7 @@
         </div>
     </div>
     
-    <div id="debug">📱 Загрузка Firebase...</div>
+    <div id="debug">📱 Подключение к Firebase...</div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     
@@ -49,30 +50,38 @@
         var player = null;
         var currentVideoId = '_g8JtMksKN8';
 
-        // Загружаем Video ID из Firebase
-        db.collection('config').doc('video').get()
-            .then((doc) => {
-                if (doc.exists) {
-                    currentVideoId = doc.data().videoId;
-                }
-                initPlayer(currentVideoId);
-                $('#debug').html('✅ Видео: ' + currentVideoId);
-                
-                // Слушаем изменения в реальном времени
-                db.collection('config').doc('video')
-                    .onSnapshot((doc) => {
-                        var newVideoId = doc.data().videoId;
-                        if (newVideoId !== currentVideoId) {
-                            currentVideoId = newVideoId;
-                            $('#debug').html('🔄 Новое видео: ' + currentVideoId + ' | Перезагрузка...');
-                            setTimeout(() => location.reload(true), 2000);
-                        }
-                    });
-            })
-            .catch((error) => {
-                initPlayer(currentVideoId);
-                $('#debug').html('❌ Ошибка Firebase: ' + error.message);
-            });
+        // Ждем инициализации Firebase
+        setTimeout(function() {
+            loadVideoFromFirebase();
+        }, 2000);
+
+        function loadVideoFromFirebase() {
+            db.collection("config").doc("video").get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        currentVideoId = doc.data().videoId;
+                        $('#debug').html('✅ Firebase: ' + currentVideoId);
+                    } else {
+                        $('#debug').html('⚠️ Используется видео по умолчанию');
+                    }
+                    initPlayer(currentVideoId);
+                    
+                    // Слушаем изменения
+                    db.collection("config").doc("video")
+                        .onSnapshot((doc) => {
+                            var newVideoId = doc.data().videoId;
+                            if (newVideoId !== currentVideoId) {
+                                currentVideoId = newVideoId;
+                                $('#debug').html('🔄 Новое видео: ' + currentVideoId);
+                                setTimeout(() => location.reload(true), 2000);
+                            }
+                        });
+                })
+                .catch((error) => {
+                    $('#debug').html('❌ Ошибка Firebase: ' + error.message);
+                    initPlayer(currentVideoId);
+                });
+        }
 
         function openAdmin() {
             window.open('admin.html', '_blank');
