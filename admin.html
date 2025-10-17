@@ -21,6 +21,7 @@
         <div id="status">Готов к обновлению</div>
         
         <p><strong>Текущее видео:</strong> <span id="currentVideo">_g8JtMksKN8</span></p>
+        <p><strong>Текущая версия:</strong> <span id="currentVersion">1</span></p>
         <p><a href="index.html" target="_blank">Открыть плеер</a></p>
     </div>
 
@@ -34,24 +35,29 @@
                 return;
             }
             
-            status.innerHTML = '🔄 Обновляем...';
+            // Увеличиваем версию конфига
+            var currentVersion = parseInt(localStorage.getItem('configVersion') || '1');
+            var newVersion = currentVersion + 1;
             
-            // Сохраняем в LocalStorage для мгновенного обновления
+            // Сохраняем новые данные
             localStorage.setItem('currentVideoId', videoId);
+            localStorage.setItem('configVersion', newVersion);
+            
+            // Обновляем отображение
             document.getElementById('currentVideo').textContent = videoId;
+            document.getElementById('currentVersion').textContent = newVersion;
             
-            status.innerHTML = '✅ Видео обновлено! Открой плеер.';
-            
-            // Авто-открытие плеера
-            setTimeout(() => {
-                window.open('index.html', '_blank');
-            }, 1000);
+            status.innerHTML = '✅ Видео обновлено! Версия: ' + newVersion + '<br>Плеер обновится автоматически в течение 30 секунд.';
         }
         
-        // Загружаем текущий ID при загрузке
+        // Загружаем текущие данные при загрузке
         window.onload = function() {
             const currentId = localStorage.getItem('currentVideoId') || '_g8JtMksKN8';
+            const currentVersion = localStorage.getItem('configVersion') || '1';
+            
             document.getElementById('currentVideo').textContent = currentId;
+            document.getElementById('currentVersion').textContent = currentVersion;
+            document.getElementById('videoId').value = currentId;
         };
     </script>
 </body>
