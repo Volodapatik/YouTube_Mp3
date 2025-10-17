@@ -19,6 +19,11 @@
         @media (orientation: portrait) { .content { padding: 15px; } }
         @media (orientation: landscape) { .content { padding: 10px; } .title { font-size: 22px; margin-bottom: 10px; } }
     </style>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js"></script>
+    <script src="firebase-config.js"></script>
 </head>
 <body>
     <div id="video-background"></div>
@@ -32,60 +37,48 @@
             <button class="btn" onclick="disableSound()">🔇 Выключить звук</button>
             <button class="btn" onclick="pauseVideo()">⏸️ Пауза</button>
             <button class="btn" onclick="playVideo()">▶️ Продолжить</button>
-            <button class="btn" onclick="forceRefresh()">🔄 Обновить</button>
+            <button class="btn" onclick="openAdmin()">⚙️ Админка</button>
         </div>
     </div>
     
-    <div id="debug">📱 Мобильная версия | Загрузка...</div>
+    <div id="debug">📱 Загрузка Firebase...</div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     
     <script>
         var player = null;
-        var currentVideoId = getVideoId();
-        var currentConfigVersion = getConfigVersion();
-        
-        function getVideoId() {
-            var savedId = localStorage.getItem('currentVideoId');
-            if (!savedId) {
-                savedId = '_g8JtMksKN8';
-                localStorage.setItem('currentVideoId', savedId);
-            }
-            return savedId;
-        }
-        
-        function getConfigVersion() {
-            return parseInt(localStorage.getItem('configVersion') || '1');
-        }
-        
-        $(document).ready(function() {
-            initPlayer(currentVideoId);
-            $('#debug').html('✅ Видео: ' + currentVideoId + ' | Версия: ' + currentConfigVersion);
-            
-            setInterval(checkForUpdates, 30000);
-        });
-        
-        function checkForUpdates() {
-            var savedVersion = getConfigVersion();
-            if (savedVersion !== currentConfigVersion) {
-                currentConfigVersion = savedVersion;
-                var newVideoId = getVideoId();
-                $('#debug').html('🔄 Обновление до версии ' + currentConfigVersion + ' | Видео: ' + newVideoId);
+        var currentVideoId = '_g8JtMksKN8';
+
+        // Загружаем Video ID из Firebase
+        db.collection('config').doc('video').get()
+            .then((doc) => {
+                if (doc.exists) {
+                    currentVideoId = doc.data().videoId;
+                }
+                initPlayer(currentVideoId);
+                $('#debug').html('✅ Видео: ' + currentVideoId);
                 
-                // ПОЛНАЯ ПЕРЕЗАГРУЗКА СТРАНИЦЫ вместо restartPlayer
-                setTimeout(function() {
-                    location.reload(true);
-                }, 1000);
-            }
+                // Слушаем изменения в реальном времени
+                db.collection('config').doc('video')
+                    .onSnapshot((doc) => {
+                        var newVideoId = doc.data().videoId;
+                        if (newVideoId !== currentVideoId) {
+                            currentVideoId = newVideoId;
+                            $('#debug').html('🔄 Новое видео: ' + currentVideoId + ' | Перезагрузка...');
+                            setTimeout(() => location.reload(true), 2000);
+                        }
+                    });
+            })
+            .catch((error) => {
+                initPlayer(currentVideoId);
+                $('#debug').html('❌ Ошибка Firebase: ' + error.message);
+            });
+
+        function openAdmin() {
+            window.open('admin.html', '_blank');
         }
-        
-        function forceRefresh() {
-            localStorage.setItem('lastRefresh', Date.now());
-            location.reload(true);
-        }
-        
+
         function initPlayer(videoId) {
-            // Уничтожаем старый плеер если есть
             if (player) {
                 try {
                     $('#video-background').YTPlayer('destroy');
@@ -107,12 +100,7 @@
                 },
                 callback: function() {
                     player = $('#video-background').data('ytPlayer').player;
-                    $('#debug').html('✅ Видео: ' + videoId + ' | Звук: выключен | Версия: ' + currentConfigVersion);
-                    
-                    setTimeout(function() {
-                        window.scrollTo(0, 0);
-                    }, 1000);
-                    
+                    $('#debug').html('✅ Видео: ' + videoId + ' | Звук: выключен');
                     startAppSync();
                 }
             });
