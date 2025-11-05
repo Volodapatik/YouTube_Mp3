@@ -139,6 +139,9 @@
                         startProgressTracking();
                         $('#debug').html('✅ Видео: ' + videoId + ' | Звук: выключен');
                         startAppSync();
+                        
+                        // Запускаем улучшенную синхронизацию
+                        enhanceAppSync();
                     }, 1000);
                 }
             });
@@ -278,6 +281,81 @@
                     }
                 } catch (e) {}
             }, 1000);
+        }
+        
+        // Улучшенная синхронизация с приложением
+        function enhanceAppSync() {
+            console.log('🚀 Enhanced app sync started');
+            
+            // Отправка информации о видео при загрузке
+            setTimeout(function() {
+                if (typeof player !== 'undefined' && player.getDuration) {
+                    try {
+                        var duration = Math.floor(player.getDuration());
+                        var videoId = typeof currentVideoId !== 'undefined' ? currentVideoId : '';
+                        var title = document.title || 'YouTube Music';
+                        
+                        if (window.Android && typeof Android.updateVideoInfo === 'function') {
+                            Android.updateVideoInfo(videoId, title, duration);
+                            console.log('✅ Initial video info sent to app:', videoId, duration + 's');
+                            $('#debug').html('✅ Видео синхронизировано с приложением');
+                        }
+                    } catch(e) {
+                        console.error('❌ Error sending initial video info:', e);
+                    }
+                }
+            }, 3000);
+            
+            // Улучшенное отслеживание времени
+            var enhancedTimeInterval = setInterval(function() {
+                if (typeof player !== 'undefined' && player.getCurrentTime) {
+                    try {
+                        var currentTime = Math.floor(player.getCurrentTime());
+                        var isPlaying = player.getPlayerState() === 1;
+                        
+                        if (window.Android && typeof Android.updateTime === 'function') {
+                            Android.updateTime(currentTime, isPlaying);
+                        }
+                    } catch(e) {
+                        console.error('❌ Error updating time:', e);
+                    }
+                }
+            }, 1000);
+            
+            // Отслеживание смены видео через Firebase
+            if (typeof db !== 'undefined') {
+                db.collection("config").doc("video").onSnapshot(function(doc) {
+                    if (doc.exists) {
+                        var newVideoId = doc.data().videoId;
+                        if (typeof currentVideoId !== 'undefined' && newVideoId !== currentVideoId) {
+                            console.log('🔄 Video changed detected:', newVideoId);
+                            $('#debug').html('🔄 Обнаружено новое видео: ' + newVideoId);
+                            
+                            // Обновляем информацию после смены видео
+                            setTimeout(function() {
+                                if (window.Android && typeof Android.updateVideoInfo === 'function') {
+                                    Android.updateVideoInfo(newVideoId, 'Загрузка нового видео...', 0);
+                                    console.log('✅ New video info sent to app:', newVideoId);
+                                }
+                            }, 2000);
+                        }
+                    }
+                });
+            }
+            
+            // Очистка интервала при уничтожении плеера
+            window.cleanupEnhancedSync = function() {
+                clearInterval(enhancedTimeInterval);
+            };
+        }
+
+        // Запускаем улучшенную синхронизацию при загрузке страницы
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(enhanceAppSync, 1000);
+            });
+        } else {
+            setTimeout(enhanceAppSync, 1000);
         }
         
         function seekTo(time) {
