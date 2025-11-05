@@ -14,6 +14,13 @@
         .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 20px 0; }
         .btn { padding: 12px 20px; background: rgba(255, 255, 255, 0.2); color: white; border: 2px solid white; border-radius: 25px; font-size: 16px; cursor: pointer; backdrop-filter: blur(10px); transition: all 0.3s ease; }
         .btn:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.05); }
+        
+        /* Стили для ползунка прогресса */
+        .progress-container { width: 90%; max-width: 500px; margin: 15px 0; }
+        .progress-bar { width: 100%; height: 6px; background: rgba(255, 255, 255, 0.3); border-radius: 3px; cursor: pointer; position: relative; }
+        .progress { height: 100%; background: #ff0000; border-radius: 3px; width: 0%; transition: width 0.1s linear; }
+        .progress-time { display: flex; justify-content: space-between; margin-top: 5px; font-size: 12px; color: rgba(255, 255, 255, 0.8); }
+        
         #debug { position: fixed; bottom: 10px; left: 10px; right: 10px; background: rgba(0, 255, 0, 0.9); color: black; padding: 10px; border-radius: 10px; font-size: 12px; z-index: 1000; }
         @media (max-width: 480px) { .title { font-size: 24px; } .description { font-size: 14px; } .btn { padding: 10px 16px; font-size: 14px; } }
         @media (orientation: portrait) { .content { padding: 15px; } }
@@ -33,6 +40,17 @@
         <h1 class="title">🎬 Мобильное видео</h1>
         <p class="description">Твое видео теперь адаптировано под мобильные устройства и работает на весь экран!</p>
         
+        <!-- Контейнер для ползунка прогресса -->
+        <div class="progress-container">
+            <div class="progress-bar" id="progress-bar">
+                <div class="progress" id="progress"></div>
+            </div>
+            <div class="progress-time">
+                <span id="current-time">0:00</span>
+                <span id="duration">0:00</span>
+            </div>
+        </div>
+        
         <div class="controls">
             <button class="btn" onclick="enableSound()">🔊 Включить звук</button>
             <button class="btn" onclick="disableSound()">🔇 Выключить звук</button>
@@ -49,6 +67,9 @@
     <script>
         var player = null;
         var currentVideoId = '_g8JtMksKN8';
+        var videoDuration = 0;
+        var isDragging = false;
+        var progressUpdateInterval = null;
 
         // Ждем инициализации Firebase
         setTimeout(function() {
@@ -92,6 +113,7 @@
                 try {
                     $('#video-background').YTPlayer('destroy');
                     player = null;
+                    clearInterval(progressUpdateInterval);
                 } catch(e) {}
             }
             
@@ -109,11 +131,110 @@
                 },
                 callback: function() {
                     player = $('#video-background').data('ytPlayer').player;
-                    $('#debug').html('✅ Видео: ' + videoId + ' | Звук: выключен');
-                    startAppSync();
+                    
+                    // Ждем загрузки видео для получения длительности
+                    setTimeout(function() {
+                        videoDuration = player.getDuration();
+                        updateDurationDisplay();
+                        startProgressTracking();
+                        $('#debug').html('✅ Видео: ' + videoId + ' | Звук: выключен');
+                        startAppSync();
+                    }, 1000);
                 }
             });
         }
+        
+        // Обновление отображения длительности видео
+        function updateDurationDisplay() {
+            if (videoDuration > 0) {
+                $('#duration').text(formatTime(videoDuration));
+            }
+        }
+        
+        // Форматирование времени в минуты:секунды
+        function formatTime(seconds) {
+            var mins = Math.floor(seconds / 60);
+            var secs = Math.floor(seconds % 60);
+            return mins + ':' + (secs < 10 ? '0' : '') + secs;
+        }
+        
+        // Запуск отслеживания прогресса видео
+        function startProgressTracking() {
+            progressUpdateInterval = setInterval(function() {
+                if (player && !isDragging) {
+                    try {
+                        var currentTime = player.getCurrentTime();
+                        var duration = player.getDuration();
+                        
+                        if (duration > 0) {
+                            var progressPercent = (currentTime / duration) * 100;
+                            $('#progress').css('width', progressPercent + '%');
+                            $('#current-time').text(formatTime(currentTime));
+                        }
+                    } catch(e) {
+                        // Игнорируем ошибки, если плеер не готов
+                    }
+                }
+            }, 500);
+        }
+        
+        // Обработчики для ползунка прогресса
+        $(document).ready(function() {
+            var progressBar = $('#progress-bar');
+            
+            // Клик по ползунку для перемотки
+            progressBar.on('click', function(e) {
+                if (!player) return;
+                
+                var offset = e.pageX - $(this).offset().left;
+                var width = $(this).width();
+                var percent = offset / width;
+                
+                var duration = player.getDuration();
+                var newTime = percent * duration;
+                
+                player.seekTo(newTime, true);
+                $('#progress').css('width', (percent * 100) + '%');
+                $('#current-time').text(formatTime(newTime));
+            });
+            
+            // Перетаскивание ползунка
+            progressBar.on('mousedown touchstart', function(e) {
+                isDragging = true;
+                e.preventDefault();
+            });
+            
+            $(document).on('mousemove touchmove', function(e) {
+                if (!isDragging || !player) return;
+                
+                var pageX = e.pageX || e.originalEvent.touches[0].pageX;
+                var offset = pageX - progressBar.offset().left;
+                var width = progressBar.width();
+                var percent = Math.max(0, Math.min(1, offset / width));
+                
+                var duration = player.getDuration();
+                var newTime = percent * duration;
+                
+                $('#progress').css('width', (percent * 100) + '%');
+                $('#current-time').text(formatTime(newTime));
+            });
+            
+            $(document).on('mouseup touchend', function(e) {
+                if (!isDragging || !player) return;
+                
+                isDragging = false;
+                
+                var pageX = e.pageX || (e.originalEvent.changedTouches ? e.originalEvent.changedTouches[0].pageX : 0);
+                var offset = pageX - progressBar.offset().left;
+                var width = progressBar.width();
+                var percent = Math.max(0, Math.min(1, offset / width));
+                
+                var duration = player.getDuration();
+                var newTime = percent * duration;
+                
+                player.seekTo(newTime, true);
+            });
+        });
         
         function enableSound() {
             if (player) {
