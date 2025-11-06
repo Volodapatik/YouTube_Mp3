@@ -22,6 +22,16 @@
         .progress-time { display: flex; justify-content: space-between; margin-top: 5px; font-size: 12px; color: rgba(255, 255, 255, 0.8); }
         
         #debug { position: fixed; bottom: 10px; left: 10px; right: 10px; background: rgba(0, 255, 0, 0.9); color: black; padding: 10px; border-radius: 10px; font-size: 12px; z-index: 1000; }
+        
+        /* Переключатель звука */
+        .sound-toggle { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
+        .toggle-switch { position: relative; display: inline-block; width: 50px; height: 24px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #303030; transition: .4s; border-radius: 24px; }
+        .toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .toggle-slider { background-color: #ff4444; }
+        input:checked + .toggle-slider:before { transform: translateX(26px); }
+        
         @media (max-width: 480px) { .title { font-size: 24px; } .description { font-size: 14px; } .btn { padding: 10px 16px; font-size: 14px; } }
         @media (orientation: portrait) { .content { padding: 15px; } }
         @media (orientation: landscape) { .content { padding: 10px; } .title { font-size: 22px; margin-bottom: 10px; } }
@@ -39,6 +49,15 @@
     <div class="content">
         <h1 class="title">🎬 Мобильное видео</h1>
         <p class="description">Твое видео теперь адаптировано под мобильные устройства и работает на весь экран!</p>
+        
+        <!-- Переключатель звука -->
+        <div class="sound-toggle">
+            <span>🔊 Авто-звук:</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="autoSoundToggle" checked onchange="toggleAutoSound()">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
         
         <!-- Контейнер для ползунка прогресса -->
         <div class="progress-container">
@@ -70,11 +89,78 @@
         var videoDuration = 0;
         var isDragging = false;
         var progressUpdateInterval = null;
+        var autoSoundEnabled = true;
+        var playerState = {
+            videoId: '',
+            currentTime: 0,
+            isPlaying: true,
+            volume: 100,
+            muted: true
+        };
+
+        // Загрузка сохраненного состояния
+        function loadPlayerState() {
+            const saved = localStorage.getItem('ytPlayerState');
+            if (saved) {
+                playerState = JSON.parse(saved);
+                currentVideoId = playerState.videoId || currentVideoId;
+                autoSoundEnabled = localStorage.getItem('autoSoundEnabled') !== 'false';
+                document.getElementById('autoSoundToggle').checked = autoSoundEnabled;
+                
+                if (playerState.videoId) {
+                    $('#debug').html('📁 Загружено сохраненное состояние');
+                }
+            }
+        }
+
+        // Сохранение состояния
+        function savePlayerState() {
+            if (player) {
+                try {
+                    playerState.videoId = currentVideoId;
+                    playerState.currentTime = player.getCurrentTime();
+                    playerState.isPlaying = player.getPlayerState() === 1;
+                    playerState.muted = player.isMuted();
+                    localStorage.setItem('ytPlayerState', JSON.stringify(playerState));
+                } catch(e) {}
+            }
+        }
+
+        // Авто-сохранение каждые 5 секунд
+        function startAutoSave() {
+            setInterval(savePlayerState, 5000);
+        }
+
+        // Переключение авто-звука
+        function toggleAutoSound() {
+            autoSoundEnabled = document.getElementById('autoSoundToggle').checked;
+            localStorage.setItem('autoSoundEnabled', autoSoundEnabled);
+            
+            if (autoSoundEnabled && player) {
+                enableSound();
+            }
+        }
+
+        // Восстановление позиции видео
+        function restorePlaybackPosition() {
+            if (player && playerState.videoId === currentVideoId && playerState.currentTime > 0) {
+                setTimeout(() => {
+                    player.seekTo(playerState.currentTime, true);
+                    if (playerState.isPlaying) {
+                        player.playVideo();
+                    } else {
+                        player.pauseVideo();
+                    }
+                    $('#debug').html('⏪ Восстановлена позиция: ' + formatTime(playerState.currentTime));
+                }, 2000);
+            }
+        }
 
         // Ждем инициализации Firebase
         setTimeout(function() {
+            loadPlayerState();
             loadVideoFromFirebase();
-        }, 2000);
+        }, 1000);
 
         function loadVideoFromFirebase() {
             db.collection("config").doc("video").get()
@@ -94,7 +180,14 @@
                             if (newVideoId !== currentVideoId) {
                                 currentVideoId = newVideoId;
                                 $('#debug').html('🔄 Новое видео: ' + currentVideoId);
-                                setTimeout(() => location.reload(true), 2000);
+                                
+                                // Сохраняем состояние перед перезагрузкой
+                                savePlayerState();
+                                setTimeout(() => {
+                                    playerState.videoId = currentVideoId;
+                                    playerState.currentTime = 0;
+                                    location.reload(true);
+                                }, 1000);
                             }
                         });
                 })
@@ -119,7 +212,7 @@
             
             $('#video-background').YTPlayer({
                 videoId: videoId,
-                mute: true,
+                mute: true, // Начинаем с выключенным звуком для авто-включения
                 repeat: true,
                 fitToBackground: true,
                 playerVars: {
@@ -137,11 +230,20 @@
                         videoDuration = player.getDuration();
                         updateDurationDisplay();
                         startProgressTracking();
-                        $('#debug').html('✅ Видео: ' + videoId + ' | Звук: выключен');
-                        startAppSync();
                         
-                        // Запускаем улучшенную синхронизацию
-                        enhanceAppSync();
+                        // Автоматически включаем звук если включена опция
+                        if (autoSoundEnabled) {
+                            setTimeout(() => {
+                                enableSound();
+                            }, 1500);
+                        }
+                        
+                        // Восстанавливаем позицию воспроизведения
+                        restorePlaybackPosition();
+                        
+                        $('#debug').html('✅ Видео: ' + videoId + ' | Звук: ' + (autoSoundEnabled ? 'авто-включение' : 'выключен'));
+                        startAppSync();
+                        startAutoSave();
                     }, 1000);
                 }
             });
@@ -199,6 +301,9 @@
                 player.seekTo(newTime, true);
                 $('#progress').css('width', (percent * 100) + '%');
                 $('#current-time').text(formatTime(newTime));
+                
+                // Сохраняем позицию после перемотки
+                savePlayerState();
             });
             
             // Перетаскивание ползунка
@@ -236,6 +341,9 @@
                 var newTime = percent * duration;
                 
                 player.seekTo(newTime, true);
+                
+                // Сохраняем позицию после перемотки
+                savePlayerState();
             });
         });
         
@@ -244,6 +352,8 @@
                 player.unMute();
                 player.setVolume(100);
                 $('#debug').html('🔊 Звук включен! | Громкость: 100%');
+                playerState.muted = false;
+                savePlayerState();
             }
         }
         
@@ -251,6 +361,8 @@
             if (player) {
                 player.mute();
                 $('#debug').html('🔇 Звук выключен');
+                playerState.muted = true;
+                savePlayerState();
             }
         }
         
@@ -258,6 +370,7 @@
             if (player) {
                 player.pauseVideo();
                 $('#debug').html('⏸️ Видео на паузе');
+                savePlayerState();
             }
         }
         
@@ -265,6 +378,7 @@
             if (player) {
                 player.playVideo();
                 $('#debug').html('▶️ Видео продолжено');
+                savePlayerState();
             }
         }
         
@@ -279,94 +393,32 @@
                     if (window.Android && typeof Android.updateTime === 'function') {
                         Android.updateTime(currentTime, isPlaying);
                     }
+                    
+                    // Обновляем информацию о видео для синхронизации
+                    if (window.Android && typeof Android.updateVideoInfo === 'function') {
+                        var duration = Math.floor(player.getDuration());
+                        var title = document.title || 'YouTube Music';
+                        Android.updateVideoInfo(currentVideoId, title, duration);
+                    }
                 } catch (e) {}
             }, 1000);
-        }
-        
-        // Улучшенная синхронизация с приложением
-        function enhanceAppSync() {
-            console.log('🚀 Enhanced app sync started');
-            
-            // Отправка информации о видео при загрузке
-            setTimeout(function() {
-                if (typeof player !== 'undefined' && player.getDuration) {
-                    try {
-                        var duration = Math.floor(player.getDuration());
-                        var videoId = typeof currentVideoId !== 'undefined' ? currentVideoId : '';
-                        var title = document.title || 'YouTube Music';
-                        
-                        if (window.Android && typeof Android.updateVideoInfo === 'function') {
-                            Android.updateVideoInfo(videoId, title, duration);
-                            console.log('✅ Initial video info sent to app:', videoId, duration + 's');
-                            $('#debug').html('✅ Видео синхронизировано с приложением');
-                        }
-                    } catch(e) {
-                        console.error('❌ Error sending initial video info:', e);
-                    }
-                }
-            }, 3000);
-            
-            // Улучшенное отслеживание времени
-            var enhancedTimeInterval = setInterval(function() {
-                if (typeof player !== 'undefined' && player.getCurrentTime) {
-                    try {
-                        var currentTime = Math.floor(player.getCurrentTime());
-                        var isPlaying = player.getPlayerState() === 1;
-                        
-                        if (window.Android && typeof Android.updateTime === 'function') {
-                            Android.updateTime(currentTime, isPlaying);
-                        }
-                    } catch(e) {
-                        console.error('❌ Error updating time:', e);
-                    }
-                }
-            }, 1000);
-            
-            // Отслеживание смены видео через Firebase
-            if (typeof db !== 'undefined') {
-                db.collection("config").doc("video").onSnapshot(function(doc) {
-                    if (doc.exists) {
-                        var newVideoId = doc.data().videoId;
-                        if (typeof currentVideoId !== 'undefined' && newVideoId !== currentVideoId) {
-                            console.log('🔄 Video changed detected:', newVideoId);
-                            $('#debug').html('🔄 Обнаружено новое видео: ' + newVideoId);
-                            
-                            // Обновляем информацию после смены видео
-                            setTimeout(function() {
-                                if (window.Android && typeof Android.updateVideoInfo === 'function') {
-                                    Android.updateVideoInfo(newVideoId, 'Загрузка нового видео...', 0);
-                                    console.log('✅ New video info sent to app:', newVideoId);
-                                }
-                            }, 2000);
-                        }
-                    }
-                });
-            }
-            
-            // Очистка интервала при уничтожении плеера
-            window.cleanupEnhancedSync = function() {
-                clearInterval(enhancedTimeInterval);
-            };
-        }
-
-        // Запускаем улучшенную синхронизацию при загрузке страницы
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function() {
-                setTimeout(enhanceAppSync, 1000);
-            });
-        } else {
-            setTimeout(enhanceAppSync, 1000);
         }
         
         function seekTo(time) {
             if (player && typeof player.seekTo === 'function') {
                 player.seekTo(time);
+                savePlayerState();
                 return true;
             }
             return false;
         }
         
         window.seekTo = seekTo;
+        
+        // Сохраняем состояние при закрытии страницы
+        window.addEventListener('beforeunload', function() {
+            savePlayerState();
+        });
         
         $(window).on('resize orientationchange', function() {
             setTimeout(function() {
